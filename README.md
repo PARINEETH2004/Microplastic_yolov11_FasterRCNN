@@ -284,6 +284,4 @@ For issues, questions, or contributions:
 
 ---
 
-*For comprehensive technical implementation details, refer to [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md)*#   M i c r o p l a s t i c _ y o l o v 1 1 _ F a s t e r R C N N  
- #   M i c r o p l a s t i c _ y o l o v 1 1 _ F a s t e r R C N N  
- 
+*For comprehensive technical implementation details, refer to [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md)*
