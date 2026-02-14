@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['Microplastic']
+
+roboflow:
+  workspace: axrl-qizdw
+  project: microplastic-ccqid-k3mms
+  version: 2
+  license: CC BY 4.0
+  url: https://app.roboflow.com/axrl-qizdw/microplastic-ccqid-k3mms/2

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Direct Backend Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+        }
+
+        #imagePreview {
+            max-width: 300px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Direct Backend Connection Test</h1>
+
+    <div>
+        <input type="file" id="imageFile" accept="image/*" required>
+        <img id="imagePreview" style="display: none;">
+    </div>
+
+    <div>
+        <select id="mode">
+            <option value="fast">Fast Mode</option>
+            <option value="accurate">Accurate Mode</option>
+        </select>
+        <button onclick="testHealth()">Test Health</button>
+        <button onclick="testDetection()">Test Detection</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        document.getElementById('imageFile').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    document.getElementById('imagePreview').src = e.target.result;
+                    document.getElementById('imagePreview').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        async function testHealth() {
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                showResult(`Health Check: ${JSON.stringify(data, null, 2)}`, 'success');
+            } catch (error) {
+                showResult(`Health Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDetection() {
+            const fileInput = document.getElementById('imageFile');
+            const modeSelect = document.getElementById('mode');
+
+            if (!fileInput.files[0]) {
+                showResult('Please select an image file first', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+            formData.append('mode', modeSelect.value);
+
+            showResult('Processing image...', 'success');
+
+            try {
+                const response = await fetch('/api/detect', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult(`
+                        <h3>✅ Detection Successful!</h3>
+                        <p><strong>Image:</strong> ${data.imageName}</p>
+                        <p><strong>Mode:</strong> ${data.mode}</p>
+                        <p><strong>Processing Time:</strong> ${data.processingTime}ms</p>
+                        <p><strong>Total Detections:</strong> ${data.totalCount}</p>
+                        <p><strong>Counts by Type:</strong> ${JSON.stringify(data.countByType)}</p>
+                        <details>
+                            <summary>Detection Details</summary>
+                            <pre>${JSON.stringify(data.detections, null, 2)}</pre>
+                        </details>
+                    `, 'success');
+                } else {
+                    showResult(`❌ Detection Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Network Error: ${error.message}`, 'error');
+            }
+        }
+
+        function showResult(message, type) {
+            const resultsDiv = document.getElementById('results');
+            const resultElement = document.createElement('div');
+            resultElement.className = `result ${type}`;
+            resultElement.innerHTML = message;
+            resultsDiv.appendChild(resultElement);
+        }
+    </script>
+</body>
+
+</html>

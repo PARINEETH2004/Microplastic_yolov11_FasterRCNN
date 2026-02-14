@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Image Upload</title>
+</head>
+<body>
+    <h1>Test YOLOv11 Image Upload</h1>
+    <form id="uploadForm">
+        <input type="file" id="imageFile" accept="image/*" required>
+        <select id="mode">
+            <option value="fast">Fast Mode</option>
+            <option value="accurate">Accurate Mode</option>
+        </select>
+        <button type="submit">Upload and Detect</button>
+    </form>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('imageFile');
+            const modeSelect = document.getElementById('mode');
+            const resultDiv = document.getElementById('result');
+            
+            if (!fileInput.files[0]) {
+                resultDiv.innerHTML = '<p style="color: red;">Please select an image file</p>';
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+            formData.append('mode', modeSelect.value);
+            
+            resultDiv.innerHTML = '<p>Uploading and processing...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/detect', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <h2>Success!</h2>
+                        <p><strong>Image:</strong> ${data.imageName}</p>
+                        <p><strong>Mode:</strong> ${data.mode}</p>
+                        <p><strong>Processing Time:</strong> ${data.processingTime}ms</p>
+                        <p><strong>Total Detections:</strong> ${data.totalCount}</p>
+                        <p><strong>Detections by Type:</strong> ${JSON.stringify(data.countByType)}</p>
+                        <h3>First Detection Details:</h3>
+                        <pre>${JSON.stringify(data.detections[0], null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p style="color: red;">Error: ${data.error}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">Network Error: ${error.message}</p>`;
+            }
+        });
+    </script>
+</body>
+</html>
