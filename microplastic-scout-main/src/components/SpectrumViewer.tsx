@@ -7,12 +7,29 @@ interface SpectrumViewerProps {
 }
 
 export function SpectrumViewer({ detection }: SpectrumViewerProps) {
+  // Error boundary
+  if (!detection) {
+    return (
+      <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 text-center">
+        <p className="text-destructive">Error: Detection data is missing</p>
+      </div>
+    );
+  }
+
+  if (!detection.spectrumData || detection.spectrumData.length === 0) {
+    return (
+      <div className="bg-muted/50 rounded-lg p-8 text-center">
+        <p className="text-muted-foreground">No spectrum data available</p>
+      </div>
+    );
+  }
+
   const spectrumPath = useMemo(() => {
     const data = detection.spectrumData;
     const width = 300;
     const height = 100;
     const stepX = width / (data.length - 1);
-    
+
     let path = `M 0 ${height - data[0] * height}`;
     for (let i = 1; i < data.length; i++) {
       path += ` L ${i * stepX} ${height - data[i] * height}`;
@@ -28,7 +45,7 @@ export function SpectrumViewer({ detection }: SpectrumViewerProps) {
           {detection.polymerType}
         </div>
       </div>
-      
+
       {/* Spectrum visualization */}
       <div className="relative bg-muted/50 rounded-lg p-4">
         <svg viewBox="0 0 300 100" className="w-full h-32">
@@ -45,7 +62,7 @@ export function SpectrumViewer({ detection }: SpectrumViewerProps) {
               strokeDasharray="4 4"
             />
           ))}
-          
+
           {/* Spectrum line */}
           <path
             d={spectrumPath}
@@ -55,7 +72,7 @@ export function SpectrumViewer({ detection }: SpectrumViewerProps) {
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-          
+
           {/* Gradient fill */}
           <defs>
             <linearGradient id="spectrumGradient" x1="0" y1="0" x2="0" y2="1">
@@ -68,7 +85,7 @@ export function SpectrumViewer({ detection }: SpectrumViewerProps) {
             fill="url(#spectrumGradient)"
           />
         </svg>
-        
+
         {/* X-axis label */}
         <div className="flex justify-between text-xs text-muted-foreground mt-2">
           <span>4000 cm⁻¹</span>
@@ -76,30 +93,30 @@ export function SpectrumViewer({ detection }: SpectrumViewerProps) {
           <span>400 cm⁻¹</span>
         </div>
       </div>
-      
+
       {/* Detection details */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground uppercase tracking-wide">Polymer Type</p>
-          <p className="font-medium text-foreground">{getPolymerFullName(detection.polymerType)}</p>
+          <p className="font-medium text-foreground">{getPolymerFullName(detection.polymerType || 'Unknown')}</p>
         </div>
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground uppercase tracking-wide">Match Score</p>
-          <p className="font-medium text-foreground">{(detection.ldirMatchScore * 100).toFixed(1)}%</p>
+          <p className="font-medium text-foreground">{((detection.ldirMatchScore || 0) * 100).toFixed(1)}%</p>
         </div>
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground uppercase tracking-wide">Particle Type</p>
-          <p className="font-medium text-foreground capitalize">{detection.particleType}</p>
+          <p className="font-medium text-foreground capitalize">{detection.particleType || 'Unknown'}</p>
         </div>
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground uppercase tracking-wide">Confidence</p>
-          <p className="font-medium text-foreground">{(detection.confidence * 100).toFixed(1)}%</p>
+          <p className="font-medium text-foreground">{((detection.confidence || 0) * 100).toFixed(1)}%</p>
         </div>
       </div>
-      
+
       {/* Note */}
       <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
-        ⚠️ This is a <strong>simulated</strong> LDIR spectrum for demonstration purposes. 
+        ⚠️ This is a <strong>simulated</strong> LDIR spectrum for demonstration purposes.
         Phase-2 will integrate real spectroscopy hardware for accurate polymer identification.
       </p>
     </div>

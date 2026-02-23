@@ -8,11 +8,28 @@ interface ResultsTableProps {
   onSelectDetection: (detection: Detection | null) => void;
 }
 
-export function ResultsTable({ 
-  result, 
-  selectedDetection, 
-  onSelectDetection 
+export function ResultsTable({
+  result,
+  selectedDetection,
+  onSelectDetection
 }: ResultsTableProps) {
+  // Error boundary
+  if (!result) {
+    return (
+      <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 text-center">
+        <p className="text-destructive">Error: Results data is missing</p>
+      </div>
+    );
+  }
+
+  if (!result.detections || result.detections.length === 0) {
+    return (
+      <div className="bg-card rounded-xl border border-border p-8 text-center">
+        <p className="text-muted-foreground">No detections found</p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-card rounded-xl border border-border overflow-hidden">
       <div className="p-4 border-b border-border">
@@ -21,7 +38,7 @@ export function ResultsTable({
           {result.totalCount} particles detected in {(result.processingTime / 1000).toFixed(2)}s
         </p>
       </div>
-      
+
       <div className="max-h-[400px] overflow-y-auto">
         <table className="w-full">
           <thead className="bg-muted/50 sticky top-0">
@@ -67,9 +84,9 @@ export function ResultsTable({
                   </span>
                 </td>
                 <td className="px-4 py-3 text-sm text-foreground">
-                  <span className="font-medium">{det.polymerType}</span>
+                  <span className="font-medium">{det.polymerType || 'Unknown'}</span>
                   <span className="text-muted-foreground ml-1 hidden sm:inline">
-                    ({getPolymerFullName(det.polymerType).split(' ')[0]})
+                    ({(getPolymerFullName(det.polymerType || 'Unknown') || '').split(' ')[0] || 'Unknown'})
                   </span>
                 </td>
                 <td className="px-4 py-3">

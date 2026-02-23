@@ -5,6 +5,7 @@ import { ImageUpload } from '@/components/ImageUpload';
 import { ResultsSection } from '@/components/ResultsSection';
 import { ProcessingOverlay } from '@/components/ProcessingOverlay';
 import { Footer } from '@/components/Footer';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { detectWithYolo } from '@/lib/yoloDetection';
 import type { DetectionResult, DetectionMode } from '@/types/detection';
 
@@ -25,6 +26,15 @@ const Index = () => {
     console.log('=== HANDLE ANALYZE CALLED ===');
     console.log('File received:', file.name, file.size, 'bytes');
     console.log('Mode:', mode);
+    console.log('Algorithm:', algorithm);
+
+    // Validate input
+    if (!file || !file.name) {
+      const error = 'Invalid file provided';
+      console.error(error);
+      setError(error);
+      return;
+    }
 
     // Create object URL for the original image
     const imageUrl = URL.createObjectURL(file);
@@ -70,6 +80,15 @@ const Index = () => {
       const detectionResult = await detectWithYolo(file, mode, algorithm);
       console.log('Analysis completed, result:', detectionResult);
 
+      // Validate the result structure
+      if (!detectionResult || typeof detectionResult !== 'object') {
+        throw new Error('Invalid result structure received from API');
+      }
+
+      if (!detectionResult.detections || !Array.isArray(detectionResult.detections)) {
+        throw new Error('Invalid detections array in result');
+      }
+
       setDebugInfo(prev => [...prev, `✅ Analysis successful - ${detectionResult.totalCount} detections found`]);
       setResult(detectionResult);
 
@@ -98,7 +117,14 @@ const Index = () => {
 
   // Log state changes for debugging
   useEffect(() => {
-    console.log('State updated - result:', result, 'isProcessing:', isProcessing, 'error:', error);
+    console.log('=== STATE UPDATE ===');
+    console.log('result:', result);
+    console.log('result type:', typeof result);
+    console.log('result is null:', result === null);
+    console.log('result is undefined:', result === undefined);
+    console.log('isProcessing:', isProcessing);
+    console.log('error:', error);
+    console.log('showing results section:', !!result);
   }, [result, isProcessing, error]);
 
   // Cleanup object URLs when component unmounts
@@ -158,7 +184,36 @@ const Index = () => {
         </>
       ) : (
         <div className="pt-16" data-results-section>
-          <ResultsSection result={result} onReset={handleReset} originalImage={originalImage || undefined} />
+          <div className="container mx-auto px-6 py-4 bg-green-100 border border-green-300 rounded-lg mb-4">
+            <h2 className="text-lg font-semibold text-green-800">DEBUG: Results Section Active</h2>
+            <p className="text-green-700">result is truthy: {String(!!result)}</p>
+            <p className="text-green-700">result.detections exists: {String(!!result?.detections)}</p>
+            <p className="text-green-700">detections length: {result?.detections?.length || 0}</p>
+            
+              
+          </div>
+
+          {/* Simple test component to verify rendering */}
+          <div className="container mx-auto px-6 py-4 bg-yellow-100 border border-yellow-300 rounded-lg mb-4">
+            <h3 className="text-lg font-semibold text-yellow-800">Simple Results Test</h3>
+            <p className="text-yellow-700">Total detections: {result?.totalCount || 0}</p>
+            <p className="text-yellow-700">Processing time: {result?.processingTime || 0}ms</p>
+            <p className="text-yellow-700">Mode: {result?.mode || 'unknown'}</p>
+          </div>
+
+          {/* Try to render ResultsSection with error handling */}
+          <div className="container mx-auto px-6">
+            <h3 className="text-xl font-bold mb-4">Detailed Results:</h3>
+            <div className="bg-white border rounded-lg p-4">
+              {result ? (
+                <ErrorBoundary>
+                  <ResultsSection result={result} onReset={handleReset} originalImage={originalImage || undefined} />
+                </ErrorBoundary>
+              ) : (
+                <div className="text-red-500 p-4">ERROR: No result data available to pass to ResultsSection</div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

@@ -9,6 +9,8 @@ import os
 import logging
 from typing import List, Dict, Any, Tuple
 from config import Config
+import zipfile
+import tempfile
 
 logger = logging.getLogger(__name__)
 
@@ -22,150 +24,136 @@ class FasterRCNNDetector:
         self._load_model()
 
     def _load_model(self):
-        """Load the trained Faster R-CNN model"""
         try:
-            # Import required modules at the start of the function
-            import tempfile
-            import shutil
+            logger.info("Loading Faster R-CNN model...")
 
-            # Define the model architecture (same as in the training notebook)
-            num_classes = 2  # Background + microplastic
-
-            # Create model with pretrained backbone
+            # Define model architecture
+            num_classes = 2
             model = fasterrcnn_resnet50_fpn(weights="DEFAULT")
-
-            # Replace the classifier with the correct number of classes
             in_features = model.roi_heads.box_predictor.cls_score.in_features
             model.roi_heads.box_predictor = FastRCNNPredictor(
                 in_features, num_classes)
 
-            # The model was likely saved as a TorchScript model and compressed as a ZIP
-            # Check for the ZIP file which may be the original TorchScript model
-            zip_model_path = os.path.join(os.path.dirname(
-                __file__), '..', 'fasterRCNN_best.pt.zip')
+            # Try multiple loading approaches
+            success = False
 
-            # Try to load as a TorchScript model from the ZIP file
-            if os.path.exists(zip_model_path):
+            # Approach 1: Try loading from ZIP file
+            zip_path = os.path.join(os.path.dirname(
+                __file__), 'models', 'fasterRCNN_best.pt.zip')
+            if os.path.exists(zip_path):
                 try:
-                    # The ZIP file might actually be a renamed TorchScript file
-                    # Some frameworks save TorchScript models as .pt but they're actually ZIP archives
+                    logger.info(f"Attempting to load from ZIP: {zip_path}")
                     with tempfile.NamedTemporaryFile(suffix='.pt', delete=False) as tmp_file:
-                        # Copy the zip to a temp file with .pt extension
-                        shutil.copy2(zip_model_path, tmp_file.name)
+                        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                            # Extract the main model file
+                            model_files = [f for f in zip_ref.namelist(
+                            ) if f.endswith('.pt') or 'model' in f]
+                            if model_files:
+                                zip_ref.extract(model_files[0], tmp_file.name)
+                                tmp_file.flush()
 
-                        try:
-                            # Try loading as TorchScript model
-                            loaded_model = torch.jit.load(
-                                tmp_file.name, map_location=self.device)
-                            # If successful, we need to adapt the loaded model to our expected structure
-                            # This might be the complete trained model
-                            self.model = loaded_model
-                            logger.info(
-                                f"Faster R-CNN TorchScript model loaded from {zip_model_path}")
-                            return
-                        except Exception as jit_error:
-                            logger.warning(
-                                f"Could not load as TorchScript model: {jit_error}")
-                        finally:
-                            # Clean up temp file
-                            os.unlink(tmp_file.name)
-
-                except Exception as zip_error:
-                    logger.warning(
-                        f"Error processing ZIP model file: {zip_error}")
-
-            # If the ZIP approach didn't work, try to extract and use the existing directory
-            source_model_dir = os.path.join(os.path.dirname(
-                __file__), '..', 'fasterRCNN_best.pt', 'best')
-
-            # The model files are in a specialized format that requires custom deserialization
-            # This is likely a complete serialized model saved in a directory format
-            # Try to create a temporary archive file and load it properly
-            # The model might have been saved as a complete TorchScript model in directory format
-            # Let's try to reconstruct it properly
-            try:
-                # Import required modules for directory reconstruction
-                import tempfile
-                import shutil
-
-                # Try to load as if it's a TorchScript model directory (though it's a folder)
-                # Sometimes models are saved in this directory format that mimics TorchScript archives
-                temp_dir = tempfile.mkdtemp()
-
-                # Copy the directory structure to a temporary location for reconstruction
-                temp_model_dir = os.path.join(temp_dir, 'reconstructed_model')
-                if os.path.exists(source_model_dir):
-                    shutil.copytree(source_model_dir, temp_model_dir)
-
-                    # Check if we have the necessary files to reconstruct
-                    data_pkl_path = os.path.join(temp_model_dir, 'data.pkl')
-
-                    # If this looks like a serialized archive, we may need to treat it differently
-                    # The directory contains the model in a non-standard format
-                    if os.path.exists(data_pkl_path):
-                        logger.info(
-                            "Found data.pkl, attempting to reconstruct model from directory format")
-
-                        # This is likely a custom serialization format
-                        # We'll need to handle the special pickle format with persistent IDs
-                        import pickle
-
-                        # Try to handle the pickle file with a custom persistent loader
-                        class CustomUnpickler(pickle.Unpickler):
-                            def persistent_load(self, saved_id):
-                                # Return the saved_id as-is for this case
-                                # This handles the custom serialization format
-                                return saved_id
-
-                        try:
-                            with open(data_pkl_path, 'rb') as f:
-                                unpickler = CustomUnpickler(f)
-                                checkpoint = unpickler.load()
-
-                                # Handle the loaded object based on its type
-                                if isinstance(checkpoint, dict):
-                                    # If it's a state dict, try to load it
-                                    if 'model_state_dict' in checkpoint:
+                                # Try to load as TorchScript or regular model
+                                try:
+                                    loaded_model = torch.jit.load(
+                                        tmp_file.name, map_location=self.device)
+                                    self.model = loaded_model
+                                    logger.info(
+                                        "✅ Successfully loaded Faster R-CNN from ZIP (TorchScript)")
+                                    success = True
+                                except:
+                                    # Try regular torch.load
+                                    checkpoint = torch.load(
+                                        tmp_file.name, map_location=self.device)
+                                    if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
                                         model.load_state_dict(
                                             checkpoint['model_state_dict'])
-                                    elif 'state_dict' in checkpoint:
+                                        logger.info(
+                                            "✅ Successfully loaded Faster R-CNN from ZIP (state dict)")
+                                        success = True
+                                    elif hasattr(checkpoint, 'state_dict'):
                                         model.load_state_dict(
-                                            checkpoint['state_dict'])
-                                    elif 'model' in checkpoint and hasattr(checkpoint['model'], 'state_dict'):
-                                        # If it's a complete model object
-                                        model = checkpoint['model']
-                                    else:
-                                        # Try loading directly if it's a state dict
+                                            checkpoint.state_dict())
+                                        logger.info(
+                                            "✅ Successfully loaded Faster R-CNN from ZIP (model object)")
+                                        success = True
+                        os.unlink(tmp_file.name)
+                except Exception as e:
+                    logger.warning(f"ZIP loading failed: {e}")
+
+            # Approach 2: Try loading from directory format
+            if not success:
+                model_dir = os.path.join(os.path.dirname(
+                    __file__), 'models', 'fasterRCNN_best.pt', 'best')
+                data_pkl_path = os.path.join(model_dir, 'data.pkl')
+
+                if os.path.exists(data_pkl_path):
+                    try:
+                        logger.info(
+                            "Attempting to load from directory format...")
+                        # Try to load with minimal approach
+                        import pickle
+
+                        # Simple approach - just try to load and see what we get
+                        with open(data_pkl_path, 'rb') as f:
+                            # Try to load without custom unpickler first
+                            try:
+                                checkpoint = pickle.load(f)
+                                if isinstance(checkpoint, dict):
+                                    state_dict = checkpoint.get(
+                                        'model_state_dict') or checkpoint.get('state_dict')
+                                    if state_dict:
+                                        model.load_state_dict(
+                                            state_dict, strict=False)
+                                        logger.info(
+                                            "✅ Successfully loaded Faster R-CNN from directory (state dict)")
+                                        success = True
+                            except:
+                                # If that fails, try with minimal storage handling
+                                class SimpleStorageUnpickler(pickle.Unpickler):
+                                    def persistent_load(self, saved_id):
+                                        return None  # Return None for storage objects
+
+                                f.seek(0)  # Reset file pointer
+                                unpickler = SimpleStorageUnpickler(f)
+                                checkpoint = unpickler.load()
+
+                                if isinstance(checkpoint, dict):
+                                    state_dict = checkpoint.get(
+                                        'model_state_dict') or checkpoint.get('state_dict')
+                                    if state_dict:
+                                        # Filter out problematic keys
+                                        filtered_state_dict = {k: v for k, v in state_dict.items()
+                                                               if not (hasattr(v, 'dtype') and str(v.dtype) == 'object')}
                                         try:
-                                            model.load_state_dict(checkpoint)
-                                        except:
+                                            model.load_state_dict(
+                                                filtered_state_dict, strict=False)
+                                            logger.info(
+                                                "✅ Successfully loaded Faster R-CNN from directory (filtered)")
+                                            success = True
+                                        except Exception as filter_error:
                                             logger.warning(
-                                                "Could not load checkpoint directly as state_dict")
-                                else:
-                                    logger.info(
-                                        "Checkpoint is not a dict, skipping loading")
+                                                f"Filtered loading failed: {filter_error}")
+                        f.close()
+                    except Exception as dir_error:
+                        logger.warning(
+                            f"Directory loading failed: {dir_error}")
 
-                            logger.info(
-                                "Faster R-CNN model loaded from reconstructed format")
-                        except Exception as custom_pickle_error:
-                            logger.warning(
-                                f"Could not load with custom unpickler: {custom_pickle_error}")
-
-                    # Clean up temp directory
-                    shutil.rmtree(temp_dir)
-
-            except Exception as dir_error:
+            # Finalize model
+            if success:
+                model.to(self.device)
+                model.eval()
+                self.model = model
+                logger.info("Faster R-CNN model loaded with trained weights ✅")
+            else:
                 logger.warning(
-                    f"Could not reconstruct model from directory: {dir_error}")
-
-            model.to(self.device)
-            model.eval()  # Set to evaluation mode
-            self.model = model
-            logger.info("Faster R-CNN model loaded successfully")
+                    "Could not load trained weights, using pretrained model")
+                model.to(self.device)
+                model.eval()
+                self.model = model
 
         except Exception as e:
-            logger.error(f"Error loading Faster R-CNN model: {e}")
-            # Create a default model as fallback
+            logger.error(f"Error loading Faster R-CNN: {e}")
+            # Emergency fallback
             num_classes = 2
             model = fasterrcnn_resnet50_fpn(weights="DEFAULT")
             in_features = model.roi_heads.box_predictor.cls_score.in_features
@@ -174,112 +162,55 @@ class FasterRCNNDetector:
             model.to(self.device)
             model.eval()
             self.model = model
-            logger.warning("Created default model as fallback")
+            logger.warning("Emergency fallback model created")
 
-    def _preprocess_image(self, image_bytes: bytes) -> torch.Tensor:
-        """Convert image bytes to tensor format for Faster R-CNN"""
-        # Convert bytes to numpy array
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        # Decode image
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        if img is None:
-            raise ValueError("Could not decode image")
+    def detect(self, image: np.ndarray) -> List[Dict[str, Any]]:
+        try:
+            if self.model is None:
+                raise ValueError("Model not loaded")
 
-        # Convert BGR to RGB
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            image_tensor = self._preprocess_image(image)
 
-        # Convert to PIL Image
-        pil_img = Image.fromarray(img_rgb)
+            with torch.no_grad():
+                predictions = self.model([image_tensor])
 
-        # Convert to tensor and normalize
+            results = self._post_process_results(predictions[0], image.shape)
+            return results
+
+        except Exception as e:
+            logger.error(f"Detection error: {e}")
+            return []
+
+    def _preprocess_image(self, image: np.ndarray) -> torch.Tensor:
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image_pil = Image.fromarray(image_rgb)
+
         transform = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
         ])
 
-        img_tensor = transform(pil_img)
+        return transform(image_pil).to(self.device)
 
-        return img_tensor.unsqueeze(0)  # Add batch dimension
+    def _post_process_results(self, predictions: Dict, original_shape: Tuple) -> List[Dict[str, Any]]:
+        results = []
+        height, width = original_shape[:2]
 
-    def _post_process_results(self, predictions: Dict[str, torch.Tensor], original_shape: Tuple[int, int]) -> List[Dict]:
-        """Process model predictions into standardized format"""
-        boxes = predictions['boxes'].cpu().detach().numpy()
-        labels = predictions['labels'].cpu().detach().numpy()
-        scores = predictions['scores'].cpu().detach().numpy()
+        if 'boxes' in predictions and 'scores' in predictions and 'labels' in predictions:
+            boxes = predictions['boxes'].cpu().numpy()
+            scores = predictions['scores'].cpu().numpy()
+            labels = predictions['labels'].cpu().numpy()
 
-        detections = []
-        img_height, img_width = original_shape
+            for i in range(len(boxes)):
+                if scores[i] > 0.5:
+                    box = boxes[i]
+                    x1, y1, x2, y2 = box
 
-        for i, (box, label, score) in enumerate(zip(boxes, labels, scores)):
-            # Skip background class (label 0) and low confidence detections
-            # Only consider microplastics (label 1)
-            if label == 0 or score < 0.5:
-                continue
+                    result = {
+                        'bbox': [float(x1), float(y1), float(x2), float(y2)],
+                        'confidence': float(scores[i]),
+                        'class_id': int(labels[i]),
+                        'class_name': 'microplastic' if labels[i] == 1 else 'background'
+                    }
+                    results.append(result)
 
-            x1, y1, x2, y2 = box
-            width = x2 - x1
-            height = y2 - y1
-
-            # Map to particle types (since the model was trained for microplastics only)
-            # We'll assign a default particle type for all detections
-            detection = {
-                'id': f'frcnn-{i}',
-                'particleType': 'fragment',  # Default assignment for microplastics
-                'polymerType': 'Unknown',    # Since we don't have polymer type in training
-                'confidence': float(score),
-                'boundingBox': {
-                    'x': float(x1),
-                    'y': float(y1),
-                    'width': float(width),
-                    'height': float(height)
-                },
-                'ldirMatchScore': 0.75,  # Default value
-                'spectrumData': [0.1] * 100,  # Placeholder spectrum data
-                'algorithm': 'faster_rcnn'  # Add algorithm identifier
-            }
-            detections.append(detection)
-
-        return detections
-
-    def detect_microplastics(self, image_bytes: bytes, mode: str = 'fast') -> Dict[str, Any]:
-        """
-        Perform microplastic detection using Faster R-CNN
-
-        Args:
-            image_bytes: Image data as bytes
-            mode: Detection mode ('fast' or 'accurate') - currently not used for Faster R-CNN
-
-        Returns:
-            Dictionary with detection results
-        """
-        try:
-            # Preprocess image
-            img_tensor = self._preprocess_image(image_bytes)
-            _, _, img_height, img_width = img_tensor.shape
-
-            # Run inference
-            with torch.no_grad():
-                predictions = self.model(img_tensor.to(self.device))
-
-            # Process results
-            detections = self._post_process_results(
-                predictions[0], (img_height, img_width))
-
-            # Calculate counts by type
-            count_by_type = {ptype: 0 for ptype in self.config.PARTICLE_TYPES}
-            for det in detections:
-                if det['particleType'] in count_by_type:
-                    count_by_type[det['particleType']] += 1
-
-            return {
-                'detections': detections,
-                'totalCount': len(detections),
-                'countByType': count_by_type,
-                'imageSize': {
-                    'width': int(img_width),
-                    'height': int(img_height)
-                }
-            }
-
-        except Exception as e:
-            logger.error(f"Faster R-CNN detection error: {e}")
-            raise
+        return results

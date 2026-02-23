@@ -7,6 +7,15 @@ interface StatsSummaryProps {
 }
 
 export function StatsSummary({ result }: StatsSummaryProps) {
+  // Error boundary
+  if (!result) {
+    return (
+      <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 text-center">
+        <p className="text-destructive">Error: Results data is missing</p>
+      </div>
+    );
+  }
+
   const particleTypes = Object.entries(result.countByType).filter(([, count]) => count > 0);
 
   return (
@@ -60,7 +69,7 @@ export function StatsSummary({ result }: StatsSummaryProps) {
       <div className="bg-card rounded-xl border border-border p-4">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-secondary">
-            {result.detections.some(d => d.algorithm === 'faster_rcnn') ? (
+            {result.detections?.some(d => d.algorithm === 'faster_rcnn') ? (
               <span className="text-lg font-bold text-secondary-foreground">R</span>
             ) : (
               <span className="text-lg font-bold text-secondary-foreground">Y</span>
@@ -68,7 +77,7 @@ export function StatsSummary({ result }: StatsSummaryProps) {
           </div>
           <div>
             <p className="text-2xl font-bold text-foreground">
-              {result.detections.some(d => d.algorithm === 'faster_rcnn') ? 'Faster R-CNN' : 'YOLOv11'}
+              {result.detections?.some(d => d.algorithm === 'faster_rcnn') ? 'Faster R-CNN' : 'YOLOv11'}
             </p>
             <p className="text-sm text-muted-foreground">Algorithm</p>
           </div>
@@ -83,7 +92,7 @@ export function StatsSummary({ result }: StatsSummaryProps) {
           </div>
           <div>
             <p className="text-2xl font-bold text-foreground">
-              {new Set(result.detections.map(d => d.polymerType)).size}
+              {new Set(result.detections?.map(d => d.polymerType) || []).size}
             </p>
             <p className="text-sm text-muted-foreground">Polymer Types</p>
           </div>

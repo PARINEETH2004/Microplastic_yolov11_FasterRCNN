@@ -7,6 +7,9 @@ import { ResultsTable } from '@/components/ResultsTable';
 import { StatsSummary } from '@/components/StatsSummary';
 import type { Detection, DetectionResult } from '@/types/detection';
 
+// Debug import verification
+console.log('ResultsSection imports loaded');
+
 interface ResultsSectionProps {
   result: DetectionResult;
   onReset: () => void;
@@ -16,21 +19,54 @@ interface ResultsSectionProps {
 export function ResultsSection({ result, onReset, originalImage }: ResultsSectionProps) {
   const [selectedDetection, setSelectedDetection] = useState<Detection | null>(null);
 
+  console.log('=== ResultsSection Render ===');
+  console.log('result prop:', result);
+  console.log('result type:', typeof result);
+  console.log('result keys:', result ? Object.keys(result) : 'no result');
+
+  // Error boundary for component rendering
+  if (!result) {
+    console.log('ERROR: result is falsy, showing error message');
+    return (
+      <div className="container mx-auto px-6 py-16 text-center">
+        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-8 max-w-2xl mx-auto">
+          <h3 className="text-xl font-semibold text-destructive mb-2">Error: Missing Results Data</h3>
+          <p className="text-destructive mb-4">The analysis results could not be loaded properly.</p>
+          <Button onClick={onReset} variant="outline">Try Again</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Additional validation
+  if (!result.detections || !Array.isArray(result.detections)) {
+    console.log('ERROR: detections missing or not array');
+    return (
+      <div className="container mx-auto px-6 py-16 text-center">
+        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-8 max-w-2xl mx-auto">
+          <h3 className="text-xl font-semibold text-destructive mb-2">Error: Invalid Detection Data</h3>
+          <p className="text-destructive mb-4">The detection results are malformed.</p>
+          <Button onClick={onReset} variant="outline">Try Again</Button>
+        </div>
+      </div>
+    );
+  }
+
   const handleExport = () => {
     const exportData = {
-      imageName: result.imageName,
-      timestamp: result.timestamp.toISOString(),
-      mode: result.mode,
-      processingTime: result.processingTime,
-      totalCount: result.totalCount,
-      countByType: result.countByType,
-      detections: result.detections.map(det => ({
-        id: det.id,
-        particleType: det.particleType,
-        polymerType: det.polymerType,
-        confidence: det.confidence,
-        ldirMatchScore: det.ldirMatchScore,
-        boundingBox: det.boundingBox,
+      imageName: result.imageName || 'Unknown',
+      timestamp: (result.timestamp || new Date()).toISOString(),
+      mode: result.mode || 'unknown',
+      processingTime: result.processingTime || 0,
+      totalCount: result.totalCount || 0,
+      countByType: result.countByType || {},
+      detections: (result.detections || []).map(det => ({
+        id: det.id || '',
+        particleType: det.particleType || 'Unknown',
+        polymerType: det.polymerType || 'Unknown',
+        confidence: det.confidence || 0,
+        ldirMatchScore: det.ldirMatchScore || 0,
+        boundingBox: det.boundingBox || { x: 0, y: 0, width: 0, height: 0 },
       })),
     };
 
@@ -52,7 +88,7 @@ export function ResultsSection({ result, onReset, originalImage }: ResultsSectio
             <div>
               <h2 className="text-3xl font-bold text-foreground">Analysis Results</h2>
               <p className="text-muted-foreground">
-                {result.imageName} • Analyzed on {result.timestamp.toLocaleString()}
+                {result.imageName || 'Unknown'} • Analyzed on {(result.timestamp || new Date()).toLocaleString()}
               </p>
             </div>
             <div className="flex gap-3">

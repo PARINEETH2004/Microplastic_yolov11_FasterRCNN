@@ -2,32 +2,26 @@ import requests
 
 
 def test_detection_api():
-    """Test the detection API with a sample image"""
     url = "http://localhost:5000/api/detect"
 
-    # Test health endpoint first
     health_response = requests.get("http://localhost:5000/api/health")
     print("Health check:", health_response.json())
 
-    # Create a simple test image using PIL
     try:
         from PIL import Image
         import io
 
-        # Create a simple test image
         img = Image.new('RGB', (640, 480), color='white')
-        # Add some random shapes to simulate particles
         import random
         for _ in range(10):
             x, y = random.randint(50, 590), random.randint(50, 430)
             size = random.randint(10, 50)
             for i in range(size):
                 for j in range(size):
-                    if random.random() > 0.3:  # Make it look like particles
+                    if random.random() > 0.3:
                         img.putpixel((x+i, y+j), (random.randint(100, 255),
                                      random.randint(100, 255), random.randint(100, 255)))
 
-        # Save to bytes
         img_bytes = io.BytesIO()
         img.save(img_bytes, format='JPEG')
         img_bytes.seek(0)

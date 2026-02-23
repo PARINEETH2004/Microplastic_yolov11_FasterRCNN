@@ -3,7 +3,6 @@ import os
 
 
 def download_yolo_model():
-    """Download YOLOv11s model if not present"""
     model_url = "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11s.pt"
     model_path = "yolov11s.pt"
 

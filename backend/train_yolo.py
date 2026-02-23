@@ -3,19 +3,16 @@ import sys
 from ultralytics import YOLO
 import logging
 
-# Set up logging
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def train_microplastic_detector():
-    """Train YOLOv11 on microplastic dataset"""
-
-    # Define paths
-    dataset_dir = r"C:\Users\PARINEETH\Downloads\microplastic-scout-main\microplastic images"
+    dataset_dir = os.path.join(os.path.dirname(
+        __file__), '..', 'microplastic images')
     data_yaml = os.path.join(dataset_dir, "data.yaml")
 
-    # Verify dataset exists
     if not os.path.exists(data_yaml):
         logger.error(f"Dataset not found at {data_yaml}")
         return False
@@ -23,29 +20,26 @@ def train_microplastic_detector():
     logger.info(f"Using dataset: {data_yaml}")
 
     try:
-        # Load a pretrained YOLOv11 model
-        model = YOLO('yolov11s.pt')  # or yolov11n.pt for smaller model
+        model = YOLO('yolov11s.pt')
 
         logger.info("Starting training...")
 
-        # Train the model
         results = model.train(
-            data=data_yaml,           # dataset YAML file
-            epochs=100,               # number of training epochs
-            imgsz=640,                # input image size
-            batch=16,                 # batch size
-            name='microplastic_v11',  # experiment name
-            project='runs/detect',    # project directory
-            patience=20,              # early stopping patience
-            save_period=10,           # save checkpoint every 10 epochs
-            device='cpu',             # use CPU (change to 0 for GPU)
-            verbose=True              # verbose output
+            data=data_yaml,
+            epochs=100,
+            imgsz=640,
+            batch=16,
+            name='microplastic_v11',
+            project='runs/detect',
+            patience=20,
+            save_period=10,
+            device='cpu',
+            verbose=True
         )
 
         logger.info("Training completed successfully!")
         logger.info(f"Best model saved to: {results.save_dir}/weights/best.pt")
 
-        # Validate the model
         logger.info("Validating model...")
         metrics = model.val()
         logger.info(f"Validation mAP50: {metrics.box.map50}")
@@ -59,16 +53,12 @@ def train_microplastic_detector():
 
 
 def export_model():
-    """Export trained model to different formats"""
     try:
-        # Load the trained model
         model = YOLO('runs/detect/microplastic_v11/weights/best.pt')
 
-        # Export to ONNX (for web deployment)
         logger.info("Exporting to ONNX...")
         model.export(format='onnx')
 
-        # Export to TorchScript
         logger.info("Exporting to TorchScript...")
         model.export(format='torchscript')
 
@@ -84,7 +74,6 @@ if __name__ == "__main__":
     print("Microplastic YOLOv11 Training Script")
     print("=" * 40)
 
-    # Train the model
     success = train_microplastic_detector()
 
     if success:

@@ -19,6 +19,23 @@ export function DetectionOverlay({
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [imageSrc, setImageSrc] = useState<string>('');
 
+  // Error boundary
+  if (!result) {
+    return (
+      <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-8 text-center">
+        <p className="text-destructive">Error: Detection results not available</p>
+      </div>
+    );
+  }
+
+  if (!result.detections || result.detections.length === 0) {
+    return (
+      <div className="bg-muted rounded-xl p-8 text-center">
+        <p className="text-muted-foreground">No detections found in the image</p>
+      </div>
+    );
+  }
+
   useEffect(() => {
     // Use original image if available, otherwise try to load from backend
     if (originalImage) {
@@ -82,7 +99,7 @@ export function DetectionOverlay({
               y={det.boundingBox.y - 20}
               width={det.boundingBox.width}
               height={18}
-              fill={getParticleColor(det.particleType)}
+              fill={getParticleColor(det.particleType || 'fiber')}
               rx={2}
             />
 
@@ -95,7 +112,7 @@ export function DetectionOverlay({
               fontFamily="Inter, sans-serif"
               fontWeight="500"
             >
-              {det.particleType} {(det.confidence * 100).toFixed(0)}%
+              {det.particleType || 'Unknown'} {((det.confidence || 0) * 100).toFixed(0)}%
             </text>
           </g>
         ))}

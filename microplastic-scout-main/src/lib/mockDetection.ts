@@ -19,10 +19,10 @@ function generateSpectrumData(): number[] {
 function generateRandomDetection(imageWidth: number, imageHeight: number): Detection {
   const particleType = particleTypes[Math.floor(Math.random() * particleTypes.length)];
   const polymerType = polymerTypes[Math.floor(Math.random() * polymerTypes.length)];
-  
+
   const width = 30 + Math.random() * 80;
   const height = 20 + Math.random() * 60;
-  
+
   return {
     id: `det-${Math.random().toString(36).substr(2, 9)}`,
     particleType,
@@ -46,19 +46,19 @@ export async function simulateDetection(
 ): Promise<DetectionResult> {
   // Simulate processing time
   const processingTime = mode === 'fast' ? 1500 + Math.random() * 1000 : 3000 + Math.random() * 2000;
-  
+
   await new Promise(resolve => setTimeout(resolve, processingTime));
-  
+
   // Generate random detections
-  const numDetections = mode === 'fast' 
+  const numDetections = mode === 'fast'
     ? 5 + Math.floor(Math.random() * 10)
     : 8 + Math.floor(Math.random() * 15);
-  
+
   const detections: Detection[] = [];
   for (let i = 0; i < numDetections; i++) {
     detections.push(generateRandomDetection(640, 480));
   }
-  
+
   // Calculate counts by type
   const countByType: Record<ParticleType, number> = {
     fiber: 0,
@@ -67,11 +67,11 @@ export async function simulateDetection(
     pellet: 0,
     foam: 0,
   };
-  
+
   detections.forEach(det => {
     countByType[det.particleType]++;
   });
-  
+
   return {
     imageUrl,
     imageName,
@@ -105,5 +105,5 @@ export function getPolymerFullName(type: PolymerType): string {
     PA: 'Polyamide (Nylon)',
     Unknown: 'Unknown Polymer',
   };
-  return names[type];
+  return names[type] || 'Unknown Polymer';
 }

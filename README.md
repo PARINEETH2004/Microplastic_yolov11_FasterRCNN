@@ -1,6 +1,6 @@
 # Microplastic Scout
 
-A full-stack application for automated microplastic particle detection and classification using YOLOv11 deep learning.
+A full-stack application for automated microplastic particle detection and classification using both YOLOv11 and Faster R-CNN deep learning models.
 
 ## 🚀 Quick Start
 
@@ -34,6 +34,7 @@ Microplastic Scout is designed to help researchers and environmental scientists 
 ### Key Features
 - **Real-time Detection**: Upload images and get instant microplastic detection results
 - **Multiple Detection Modes**: Fast processing or high-accuracy analysis
+- **Dual Algorithm Support**: Choose between YOLOv11 (speed) and Faster R-CNN (accuracy)
 - **Particle Classification**: Automatic categorization into fiber, fragment, film, pellet, or foam
 - **Polymer Identification**: Simulated polymer type detection (PE, PP, PS, PET, PVC, PA)
 - **Interactive Visualization**: Bounding boxes overlaid on original images
@@ -51,19 +52,20 @@ Microplastic Scout is designed to help researchers and environmental scientists 
                                             │
                                             ▼
                                   ┌──────────────────┐
-                                  │  YOLOv11 Model   │
-                                  │  (Ultralytics)   │
+                                  │  Detection Models │
+                                  │  (YOLOv11 &       │
+                                  │   Faster R-CNN)   │
                                   └──────────────────┘
 ```
 
 ### Detailed Architecture Documentation
-For comprehensive technical details about the system architecture, component connections, and YOLOv11 implementation, see: [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md)
+For comprehensive technical details about the system architecture, component connections, and dual model implementation (YOLOv11 & Faster R-CNN), see: [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md)
 
-## 🔬 YOLOv11 Implementation
+## 🔬 Dual Model Implementation
 
 ### Model Details
-- **Base Model**: YOLOv11s (pretrained)
-- **Custom Training**: Microplastic detection dataset
+- **YOLOv11 Model**: YOLOv11s (pretrained) with custom microplastic detection training
+- **Faster R-CNN Model**: ResNet50 backbone with custom microplastic detection training
 - **Input Size**: 640×640 pixels
 - **Confidence Thresholds**: 
   - Fast mode: 0.3
@@ -73,20 +75,21 @@ For comprehensive technical details about the system architecture, component con
 ```
 backend/
 ├── models/
-│   └── yolov11_microplastic.pt      # Custom trained model
+│   └── yolov11_microplastic.pt      # Custom trained YOLOv11 model
+├── faster_rcnn_detector.py          # Faster R-CNN implementation
 ├── runs/
 │   └── detect/
 │       └── microplastic_v11/
 │           └── weights/
-│               ├── best.pt          # Best weights
-│               └── last.pt          # Last epoch
+│               ├── best.pt          # Best YOLOv11 weights
+│               └── last.pt          # Last YOLOv11 epoch
 ├── yolov11s.pt                      # Pretrained base model
 └── detection.py                     # Model integration
 ```
 
 ### Detection Pipeline
 1. **Image Preprocessing**: Convert to OpenCV format
-2. **Model Inference**: Run YOLOv11 detection
+2. **Model Inference**: Run either YOLOv11 or Faster R-CNN detection
 3. **Post-processing**: Filter by confidence threshold
 4. **Classification**: Particle and polymer type identification
 5. **Result Formatting**: JSON response with bounding boxes
@@ -104,7 +107,8 @@ backend/
 ### Backend
 - **Python 3.8+** - Core language
 - **Flask** - Web framework
-- **Ultralytics YOLO** - Computer vision
+- **Ultralytics YOLO** - YOLOv11 computer vision
+- **TorchVision** - Faster R-CNN computer vision
 - **OpenCV** - Image processing
 - **PyTorch** - Deep learning
 - **NumPy** - Numerical computing
@@ -144,12 +148,15 @@ User Upload → Frontend → FormData → Backend API → YOLO Model → Results
 2. **Choose Mode**: 
    - Fast: Quick detection (~1.5s)
    - Accurate: Thorough analysis (~3.0s)
-3. **View Results**: 
+3. **Select Algorithm**: 
+   - YOLOv11: Faster processing
+   - Faster R-CNN: Higher accuracy
+4. **View Results**: 
    - Original image with bounding boxes
    - Particle type classifications
    - Confidence scores
    - Count statistics
-4. **Export Data**: Download results as JSON
+5. **Export Data**: Download results as JSON
 
 ## 📁 Project Structure
 
@@ -271,6 +278,7 @@ This project is for educational and research purposes.
 ## 🙏 Acknowledgments
 
 - **Ultralytics** for YOLOv11 implementation
+- **PyTorch/TorchVision** for Faster R-CNN implementation
 - **React** and **Vite** teams for excellent development tools
 - **Flask** community for the web framework
 - Environmental research community for the important work
