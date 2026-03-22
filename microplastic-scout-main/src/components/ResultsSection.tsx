@@ -7,9 +7,6 @@ import { ResultsTable } from '@/components/ResultsTable';
 import { StatsSummary } from '@/components/StatsSummary';
 import type { Detection, DetectionResult } from '@/types/detection';
 
-// Debug import verification
-console.log('ResultsSection imports loaded');
-
 interface ResultsSectionProps {
   result: DetectionResult;
   onReset: () => void;
@@ -19,14 +16,8 @@ interface ResultsSectionProps {
 export function ResultsSection({ result, onReset, originalImage }: ResultsSectionProps) {
   const [selectedDetection, setSelectedDetection] = useState<Detection | null>(null);
 
-  console.log('=== ResultsSection Render ===');
-  console.log('result prop:', result);
-  console.log('result type:', typeof result);
-  console.log('result keys:', result ? Object.keys(result) : 'no result');
-
   // Error boundary for component rendering
   if (!result) {
-    console.log('ERROR: result is falsy, showing error message');
     return (
       <div className="container mx-auto px-6 py-16 text-center">
         <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-8 max-w-2xl mx-auto">
@@ -40,7 +31,6 @@ export function ResultsSection({ result, onReset, originalImage }: ResultsSectio
 
   // Additional validation
   if (!result.detections || !Array.isArray(result.detections)) {
-    console.log('ERROR: detections missing or not array');
     return (
       <div className="container mx-auto px-6 py-16 text-center">
         <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-8 max-w-2xl mx-auto">

@@ -6,8 +6,11 @@ class Config:
         'SECRET_KEY') or 'microplastic-scout-secret-key'
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024
 
+    # Updated paths to use extracted trained models
     MODEL_PATH = os.path.join(os.path.dirname(
-        __file__), 'models', 'yolov11_microplastic.pt')
+        __file__), 'models', 'yolov11_microplastic.pt')  # ✅ Trained YOLOv11 microplastic model
+    FASTER_RCNN_MODEL_PATH = os.path.join(os.path.dirname(
+        __file__), 'models', 'best')  # ⚠️  Faster R-CNN (TorchScript format - uses fallback)
     CONFIDENCE_THRESHOLD = 0.5
 
     CLASS_NAMES = ['Microplastic']

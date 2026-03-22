@@ -54,9 +54,21 @@ def detect_microplastics():
 
         image_bytes = file.read()
 
+        print(f"\n\n{'='*60}")
+        print(f"DEBUG APP.PY: Received detection request")
+        print(
+            f"DEBUG APP.PY: Mode={mode}, Algorithm={algorithm}, Image size={len(image_bytes)} bytes")
+        print(f"{'='*60}\n\n")
+
         start_time = time.time()
         result = detector.detect_microplastics(image_bytes, mode, algorithm)
         processing_time = int((time.time() - start_time) * 1000)
+
+        print(f"\n\n{'='*60}")
+        print(f"DEBUG APP.PY: Detection completed")
+        print(
+            f"DEBUG APP.PY: Total count returned: {result.get('totalCount', 0)}")
+        print(f"{'='*60}\n\n")
 
         result['processingTime'] = processing_time
         result['mode'] = mode

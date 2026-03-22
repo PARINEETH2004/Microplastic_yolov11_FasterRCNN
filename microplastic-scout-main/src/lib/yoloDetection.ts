@@ -23,8 +23,6 @@ interface ApiError {
 
 class YoloDetectionService {
     private async makeRequest<T>(url: string, options: RequestInit = {}): Promise<T> {
-        console.log('Making request to:', url);
-
         // CRITICAL FIX: Don't set Content-Type for FormData requests
         const isFormData = options.body instanceof FormData;
         const headers = {
@@ -38,7 +36,6 @@ class YoloDetectionService {
             headers,
         });
 
-        console.log('Response status:', response.status);
         if (!response.ok) {
             const errorData: ApiError = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
             throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
@@ -60,38 +57,12 @@ class YoloDetectionService {
         mode: DetectionMode = 'fast',
         algorithm: 'yolo' | 'faster_rcnn' = 'yolo'
     ): Promise<DetectionResult> {
-        console.log('=== DETECT MICROPLASTICS CALLED ===');
-        console.log('Image file received:', {
-            name: imageFile.name,
-            size: imageFile.size,
-            type: imageFile.type,
-            lastModified: imageFile.lastModified
-        });
-
         const formData = new FormData();
         formData.append('image', imageFile);
         formData.append('mode', mode);
         formData.append('algorithm', algorithm);
 
-        console.log('FormData constructed:');
-        console.log('image field exists:', formData.has('image'));
-        console.log('mode field exists:', formData.has('mode'));
-        console.log('mode value:', formData.get('mode'));
-
-        // Verify the image file is actually in the FormData
-        const imageField = formData.get('image');
-        if (imageField instanceof File) {
-            console.log('Image field is File:', {
-                name: imageField.name,
-                size: imageField.size,
-                type: imageField.type
-            });
-        } else {
-            console.error('ERROR: Image field is not a File object:', imageField);
-        }
-
         try {
-            console.log('Sending detection request with mode:', mode);
             const response: ApiResponse = await this.makeRequest(`${API_BASE_URL}/detect`, {
                 method: 'POST',
                 body: formData,
@@ -99,8 +70,6 @@ class YoloDetectionService {
                     // Don't set Content-Type when using FormData
                 },
             });
-
-            console.log('Detection response received:', response);
 
             // Convert API response to DetectionResult format
             const result: DetectionResult = {
@@ -114,10 +83,8 @@ class YoloDetectionService {
                 countByType: response.countByType as Record<any, number>,
             };
 
-            console.log('Converted result:', result);
             return result;
         } catch (error) {
-            console.error('Detection API error:', error);
             throw error;
         }
     }
@@ -127,7 +94,7 @@ class YoloDetectionService {
             await this.healthCheck();
             return true;
         } catch (error) {
-            console.warn('Backend not available, falling back to mock detection:', error);
+            console.warn('Backend not available, falling back to mock detection:');
             return false;
         }
     }
@@ -142,38 +109,25 @@ export async function detectWithYolo(
     mode: DetectionMode = 'fast',
     algorithm: 'yolo' | 'faster_rcnn' = 'yolo'
 ): Promise<DetectionResult> {
-    console.log('=== detectWithYolo called ===');
-    console.log('imageFile:', imageFile?.name, imageFile?.size);
-    console.log('mode:', mode);
-    console.log('algorithm:', algorithm);
-
     try {
         const isAvailable = await yoloDetectionService.isBackendAvailable();
-        console.log('Backend available:', isAvailable);
 
         if (isAvailable) {
-            console.log('Backend is available, attempting YOLO detection...');
             const result = await yoloDetectionService.detectMicroplastics(imageFile, mode, algorithm);
-            console.log('Backend detection result:', result);
             return result;
         } else {
-            console.warn('Backend not available, falling back to mock detection');
             const { simulateDetection } = await import('./mockDetection');
             const mockResult = simulateDetection(URL.createObjectURL(imageFile), imageFile.name, mode);
-            console.log('Mock detection result:', mockResult);
             return mockResult;
         }
     } catch (error) {
-        console.error('Detection failed:', error);
-        console.log('Falling back to mock detection due to connection error');
+        // Fallback to mock detection on any error
         // Always fallback to mock detection on any error
         try {
             const { simulateDetection } = await import('./mockDetection');
             const mockResult = await simulateDetection(URL.createObjectURL(imageFile), imageFile.name, mode);
-            console.log('Error fallback mock result:', mockResult);
             return mockResult;
         } catch (mockError) {
-            console.error('Mock detection also failed:', mockError);
             throw new Error('Both backend and mock detection failed');
         }
     }

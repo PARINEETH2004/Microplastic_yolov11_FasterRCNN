@@ -20,37 +20,21 @@ export function ImageUpload({ onAnalyze, isProcessing }: ImageUploadProps) {
 
   // CRITICAL FIX 1: Remove circular dependency from handleFileSelect
   const handleFileSelect = useCallback((file: File) => {
-    console.log('=== FILE SELECT TRIGGERED ===');
-    console.log('File details:', {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      lastModified: file.lastModified
-    });
-
     if (file.type.startsWith('image/')) {
       // CRITICAL: Store the actual File object in component state
       setSelectedFile(file);
-      console.log('✅ File stored in local state:', file.name, file.size, 'bytes');
 
       // Create preview URL for display
       const blobUrl = URL.createObjectURL(file);
       setPreviewUrl(blobUrl);
-      console.log('✅ Preview URL created:', blobUrl);
 
     } else {
       console.error('❌ Invalid file type:', file.type);
     }
   }, []); // Remove selectedFile dependency to avoid circular reference
 
-  // CRITICAL FIX 2: Verify file state is properly maintained
-  useEffect(() => {
-    console.log('File state changed in ImageUpload:', selectedFile ? selectedFile.name : 'null');
-  }, [selectedFile]);
-
   // CRITICAL FIX 3: Robust sample image loading with proper File creation
   const loadSampleImage = useCallback(async () => {
-    console.log('=== LOADING SAMPLE IMAGE ===');
     try {
       const response = await fetch(sampleImage);
       if (!response.ok) {
@@ -58,22 +42,11 @@ export function ImageUpload({ onAnalyze, isProcessing }: ImageUploadProps) {
       }
 
       const blob = await response.blob();
-      console.log('Blob received:', {
-        size: blob.size,
-        type: blob.type
-      });
 
       // CRITICAL: Create proper File object with correct metadata
       const file = new File([blob], 'sample-microscopy.jpg', {
         type: 'image/jpeg',
         lastModified: Date.now()
-      });
-
-      console.log('File object created:', {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        lastModified: file.lastModified
       });
 
       // Verify the file is valid before proceeding
@@ -82,45 +55,17 @@ export function ImageUpload({ onAnalyze, isProcessing }: ImageUploadProps) {
       }
 
       // CRITICAL: Explicitly call the file selection handler
-      console.log('Calling handleFileSelect with created file...');
       handleFileSelect(file);
-
-      // Additional verification - check state after a brief delay
-      setTimeout(() => {
-        console.log('Post-selection verification - local selectedFile:', selectedFile?.name || 'null');
-        if (!selectedFile) {
-          console.error('❌ CRITICAL ERROR: File was not stored in local state after handleFileSelect!');
-        }
-      }, 50);
-
     } catch (error) {
-      console.error('❌ Failed to load sample image:', error);
     }
   }, [handleFileSelect]); // Only depend on handleFileSelect, not selectedFile
 
   // CRITICAL FIX 4: Enhanced analysis handler with explicit state verification
   const handleAnalyzeClick = useCallback(() => {
-    console.log('=== START ANALYSIS CLICKED ===');
-    console.log('Current local state:');
-    console.log('- Selected file:', selectedFile ? selectedFile.name : 'null');
-    console.log('- Selected file size:', selectedFile ? selectedFile.size : 'N/A');
-    console.log('- Detection mode:', detectionMode);
-    console.log('- isProcessing:', isProcessing);
-
     // CRITICAL: Verify file exists before proceeding
     if (!selectedFile) {
-      console.error('❌ CRITICAL ERROR: No file selected for analysis!');
-      console.error('This means the file was not properly stored in local state.');
-      console.error('Check the file selection flow and ensure setSelectedFile() is called.');
       return;
     }
-
-    console.log('✅ File found in local state, calling onAnalyze with:', selectedFile.name);
-    console.log('File details being sent:', {
-      name: selectedFile.name,
-      size: selectedFile.size,
-      type: selectedFile.type
-    });
 
     // CRITICAL: Pass the actual File object to parent handler
     onAnalyze(selectedFile, detectionMode, detectionAlgorithm);
@@ -161,7 +106,6 @@ export function ImageUpload({ onAnalyze, isProcessing }: ImageUploadProps) {
                     onClick={() => {
                       setSelectedFile(null);
                       setPreviewUrl(null);
-                      console.log('File selection cleared');
                     }}
                     className="absolute top-2 right-2 p-1.5 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
                   >
